@@ -1,6 +1,7 @@
 package items
 
 import (
+	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"net/url"
 	"strings"
@@ -121,11 +122,14 @@ func (h *ItemHandler) GetItem(ctx *fiber.Ctx) error {
 	}
 	var currentUserID uint64
 	if v := ctx.Locals("user_id"); v != nil {
+		fmt.Println("ctx.Locals(\"user_id\"):", v, "type:", fmt.Sprintf("%T", v))
 		if id, ok := v.(uint64); ok {
 			currentUserID = id
 		} else if f, ok := v.(float64); ok {
 			currentUserID = uint64(f)
 		}
+	} else {
+		fmt.Println("ctx.Locals(\"user_id\"): nil (не авторизован)")
 	}
 	type feedItem struct {
 		ID        uint64    `json:"id"`
@@ -133,7 +137,7 @@ func (h *ItemHandler) GetItem(ctx *fiber.Ctx) error {
 		Text      string    `json:"text"`
 		ImageURL  string    `json:"image_url"`
 		Price     float32   `json:"price"`
-		AuthorID  *uint64   `json:"author_id,omitempty"`
+		AuthorID  uint64    `json:"author_id"`
 		CreatedAt time.Time `json:"created_at"`
 		IsMine    bool      `json:"is_mine,omitempty"`
 	}
@@ -145,13 +149,13 @@ func (h *ItemHandler) GetItem(ctx *fiber.Ctx) error {
 			Text:      it.Text,
 			ImageURL:  it.ImageURL,
 			Price:     it.Price,
+			AuthorID:  it.AuthorID,
 			CreatedAt: it.CreatedAt,
 		}
-		if currentUserID != 0 {
-			fi.AuthorID = &it.AuthorID
-			if it.AuthorID == currentUserID {
-				fi.IsMine = true
-			}
+		debugMine := currentUserID != 0 && it.AuthorID == currentUserID
+		fmt.Printf("item.AuthorID=%d, currentUserID=%d, isMine=%v\n", it.AuthorID, currentUserID, debugMine)
+		if debugMine {
+			fi.IsMine = true
 		}
 		resp = append(resp, fi)
 	}
